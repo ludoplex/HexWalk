@@ -67,7 +67,9 @@ class ArcadyanDeobfuscator(binwalk.core.plugin.Plugin):
             deobfuscated = deobfuscated[self.P1_START:self.P1_END] + bswap + deobfuscated[self.BLOCK1_END:]
 
         if deobfuscated:
-            out = binwalk.core.common.BlockFile((os.path.splitext(fname)[0] + '.deobfuscated'), "wb")
+            out = binwalk.core.common.BlockFile(
+                f'{os.path.splitext(fname)[0]}.deobfuscated', "wb"
+            )
             out.write(deobfuscated)
             out.close()
             return True

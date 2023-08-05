@@ -51,10 +51,7 @@ class CPIOPlugin(binwalk.core.plugin.Plugin):
         fpin.close()
         fperr.close()
 
-        if result in [0, 2]:
-            return True
-        else:
-            return False
+        return result in {0, 2}
 
     def pre_scan(self):
         # Be sure to re-set this at the beginning of every scan
@@ -90,7 +87,7 @@ class CPIOPlugin(binwalk.core.plugin.Plugin):
                 self.found_archive = False
                 self.found_archive_in_file = None
                 self.consecutive_hits = 0
-            elif self.consecutive_hits >= 4:
+            else:
                 # Ignore other stuff until the end of CPIO is found
                 # TODO: It would be better to jump to the end of this CPIO entry rather than make this assumption...
                 result.valid = False

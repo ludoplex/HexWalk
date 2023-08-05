@@ -34,15 +34,12 @@ class LZMAExtractPlugin(binwalk.core.plugin.Plugin):
         outfile = os.path.splitext(fname)[0]
 
         try:
-            fpin = open(fname, "rb")
-            compressed = fpin.read()
-            fpin.close()
-
+            with open(fname, "rb") as fpin:
+                compressed = fpin.read()
             decompressed = self.decompressor(compressed)
 
-            fpout = open(outfile, "wb")
-            fpout.write(decompressed)
-            fpout.close()
+            with open(outfile, "wb") as fpout:
+                fpout.write(decompressed)
         except KeyboardInterrupt as e:
             raise e
         except Exception as e:

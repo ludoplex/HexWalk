@@ -93,17 +93,13 @@ class Plotter(Module):
         '''
         total = 0
         min_weight = 0
-        weightings = {}
         plot_points = {}
 
         # If the number of data points exceeds the maximum number of allowed data points, use a
         # weighting system to eliminate data points that occur less freqently.
         if sum(data_points.values()) > self.max_points:
 
-            # First, generate a set of weight values 1 - 10
-            for i in range(1, 11):
-                weightings[i] = 0
-
+            weightings = {i: 0 for i in range(1, 11)}
             # Go through every data point and how many times that point occurs
             for (point, count) in iterator(data_points):
                 # For each data point, compare it to each remaining weight value
@@ -167,7 +163,7 @@ class Plotter(Module):
         i = 0
         data_points = {}
 
-        self._print("Generating data points for %s" % fp.name)
+        self._print(f"Generating data points for {fp.name}")
 
         # We don't need any extra data from BlockFile
         fp.set_block_size(peek=0)
@@ -198,8 +194,7 @@ class Plotter(Module):
         size = np.empty((nitems))
         color = np.empty((nitems, 4))
 
-        i = 0
-        for (point, weight) in iterator(plot_points):
+        for i, (point, weight) in enumerate(iterator(plot_points)):
             r = 0.0
             g = 0.0
             b = 0.0
@@ -224,8 +219,6 @@ class Plotter(Module):
                 g = 1.0
 
             color[i] = (r, g, b, 1.0)
-
-            i += 1
 
         scatter_plot = gl.GLScatterPlotItem(pos=pos, size=size, color=color, pxMode=False)
         scatter_plot.translate(-127.5, -127.5, -127.5)

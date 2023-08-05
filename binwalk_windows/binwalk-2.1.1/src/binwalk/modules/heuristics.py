@@ -19,13 +19,9 @@ class ChiSquare(object):
 
         Returns None.
         '''
-        self.bytes = {}
         self.freedom = self.IDEAL - 1 
-        
-        # Initialize the self.bytes dictionary with keys for all possible byte values (0 - 255)
-        for i in range(0, int(self.IDEAL)):
-            self.bytes[chr(i)] = 0
-        
+
+        self.bytes = {chr(i): 0 for i in range(0, int(self.IDEAL))}
         self.reset()
 
     def reset(self):
@@ -55,9 +51,7 @@ class ChiSquare(object):
 
         Returns the critical value.
         '''
-        expected = self.byte_count / self.IDEAL
-
-        if expected:
+        if expected := self.byte_count / self.IDEAL:
             for byte in self.bytes.values():
                 self.xc2 += ((byte - expected) ** 2 ) / expected
 
@@ -120,11 +114,7 @@ class HeuristicCompressionAnalyzer(Module):
         elif self.trigger_level < 0.0:
             self.trigger_level = 0.0
 
-        if self.config.block:
-            self.block_size = self.config.block
-        else:
-            self.block_size = self.BLOCK_SIZE
-
+        self.block_size = self.config.block if self.config.block else self.BLOCK_SIZE
         for result in self.entropy.results:
             if not has_key(self.blocks, result.file.name):
                 self.blocks[result.file.name] = []

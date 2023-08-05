@@ -60,9 +60,8 @@ class HexDiff(Module):
         return c
 
     def _colorize(self, c, color="red", bold=True):
-        attr = []
+        attr = [self.COLORS[color]]
 
-        attr.append(self.COLORS[color])
         if bold:
             attr.append('1')
 
@@ -73,14 +72,14 @@ class HexDiff(Module):
         green = '\x1b[' + self.COLORS['green'] + ';'
         blue = '\x1b[' + self.COLORS['blue'] + ';'
 
-        if self.show_blue and blue in data:
-            return True
-        elif self.show_green and green in data:
-            return True
-        elif self.show_red and red in data:
-            return True
-
-        return False
+        return bool(
+            self.show_blue
+            and blue in data
+            or self.show_green
+            and green in data
+            or self.show_red
+            and red in data
+        )
 
     def hexascii(self, target_data, byte, offset):
         color = "green"
@@ -151,16 +150,16 @@ class HexDiff(Module):
                     else:
                         (hexbyte, asciibyte) = self.hexascii(block_data, block_data[fp][i], i)
 
-                    hexline += "%s " % hexbyte
-                    asciiline += "%s" % asciibyte
+                    hexline += f"{hexbyte} "
+                    asciiline += f"{asciibyte}"
 
-                line += "%s |%s|" % (hexline, asciiline)
+                line += f"{hexline} |{asciiline}|"
 
                 if self.terse:
                     break
 
                 if fp != target_files[-1]:
-                    line += " %s " % seperator
+                    line += f" {seperator} "
 
             offset = fp.offset + (self.block * loop_count)
 
@@ -193,18 +192,14 @@ class HexDiff(Module):
         # Build a list of files to hexdiff
         self.hex_target_files = []
         while True:
-            f = self.next_file(close_previous=False)
-            if not f:
-                break
-            else:
+            if f := self.next_file(close_previous=False):
                 self.hex_target_files.append(f)
 
+            else:
+                break
         # Build the header format string
         header_width = (self.block * 4) + 2
-        if self.terse:
-            file_count = 1
-        else:
-            file_count = len(self.hex_target_files)
+        file_count = 1 if self.terse else len(self.hex_target_files)
         self.HEADER_FORMAT = "OFFSET      " + (("%%-%ds   " % header_width) * file_count) + "\n"
 
         # Build the header argument list

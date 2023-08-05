@@ -111,9 +111,9 @@ class HashMatch(Module):
 
         # Add description string padding for alignment
         if match < 100:
-            fname = ' ' + fname
+            fname = f' {fname}'
         if match < 10:
-            fname = ' ' + fname
+            fname = f' {fname}'
 
         self.result(percentage=match, description=fname, plot=False)
 
@@ -154,7 +154,7 @@ class HashMatch(Module):
                             file1_strings = self.last_file1.strings
                         else:
                             self.last_file1.strings = file1_strings = self._get_strings(file1)
-                            
+
                         if file2_dup:
                             file2_strings = self.last_file2.strings
                         else:
@@ -162,40 +162,36 @@ class HashMatch(Module):
 
                         if file1_strings == file2_strings:
                             return 100
+                        if file1_dup:
+                            hash1 = self.last_file1.hash
                         else:
-                            if file1_dup:
-                                hash1 = self.last_file1.hash
-                            else:
-                                status |= self.lib.fuzzy_hash_buf(file1_strings, len(file1_strings), hash1)
+                            status |= self.lib.fuzzy_hash_buf(file1_strings, len(file1_strings), hash1)
 
-                            if file2_dup:
-                                hash2 = self.last_file2.hash
-                            else:
-                                status |= self.lib.fuzzy_hash_buf(file2_strings, len(file2_strings), hash2)
-                        
+                        if file2_dup:
+                            hash2 = self.last_file2.hash
+                        else:
+                            status |= self.lib.fuzzy_hash_buf(file2_strings, len(file2_strings), hash2)
+
                     else:
                         if file1_dup:
                             hash1 = self.last_file1.hash
                         else:
                             status |= self.lib.fuzzy_hash_filename(file1, hash1)
-                            
+
                         if file2_dup:
                             hash2 = self.last_file2.hash
                         else:
                             status |= self.lib.fuzzy_hash_filename(file2, hash2)
-                
+
                     if status == 0:
                         if not file1_dup:
                             self.last_file1.hash = hash1
                         if not file2_dup:
                             self.last_file2.hash = hash2
 
-                        if hash1.raw == hash2.raw:
-                            return 100
-                        else:
-                            return self.lib.fuzzy_compare(hash1, hash2)
+                        return 100 if hash1.raw == hash2.raw else self.lib.fuzzy_compare(hash1, hash2)
                 except Exception as e:
-                    binwalk.core.common.warning("Exception while doing fuzzy hash: %s" % str(e))
+                    binwalk.core.common.warning(f"Exception while doing fuzzy hash: {str(e)}")
 
         return None
 
@@ -295,7 +291,7 @@ class HashMatch(Module):
 
                     m = self._compare_files(file1, file2)
                     if m is not None and self.is_match(m):
-                        self._show_result(m, "%s => %s" % (file1, file2))
+                        self._show_result(m, f"{file1} => {file2}")
 
                         self.total += 1
                         if self.max_results and self.total >= self.max_results:

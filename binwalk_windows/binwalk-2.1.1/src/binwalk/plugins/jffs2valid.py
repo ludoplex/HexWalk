@@ -17,13 +17,13 @@ class JFFS2ValidPlugin(binwalk.core.plugin.Plugin):
         node_header = binwalk.core.compat.str2bytes(node_header)
 
         # Get the header's reported CRC value
-        if node_header[0:2] == b"\x19\x85":
+        if node_header[:2] == b"\x19\x85":
             header_crc = struct.unpack(">I", node_header[8:12])[0]
         else:
             header_crc = struct.unpack("<I", node_header[8:12])[0]
 
         # Calculate the actual CRC
-        calculated_header_crc = (binascii.crc32(node_header[0:8], -1) ^ -1) & 0xffffffff
+        calculated_header_crc = (binascii.crc32(node_header[:8], -1) ^ -1) & 0xffffffff
 
         # Make sure they match
         return (header_crc == calculated_header_crc)
@@ -42,6 +42,6 @@ class JFFS2ValidPlugin(binwalk.core.plugin.Plugin):
             node_header = fd.read(1024)
             fd.close()
 
-            result.valid = self._check_crc(node_header[0:12])
+            result.valid = self._check_crc(node_header[:12])
 
 

@@ -53,7 +53,7 @@ class StatusRequestHandler(SocketServer.BaseRequestHandler):
                 if e.errno == errno.EPIPE:
                     break
             except Exception as e:
-                binwalk.core.common.debug('StatusRequestHandler exception: ' + str(e) + '\n')
+                binwalk.core.common.debug(f'StatusRequestHandler exception: {str(e)}' + '\n')
             except KeyboardInterrupt as e:
                 raise e
 

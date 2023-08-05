@@ -71,7 +71,7 @@ class SignatureLine(object):
 
         # Sanity check on the split line
         if len(parts) not in [3, 4]:
-            raise ParserException("Invalid signature line: '%s'" % line)
+            raise ParserException(f"Invalid signature line: '{line}'")
 
         # The indentation level is determined by the number of '>' characters at
         # the beginning of the signature line.
@@ -146,7 +146,6 @@ class SignatureLine(object):
         # If this is a wildcard value, explicitly set self.value to None
         if self.value == 'x':
             self.value = None
-        # String values need to be decoded, as they may contain escape characters (e.g., '\x20')
         elif self.type == 'string':
             # String types support multiplication to easily match large repeating byte sequences
             if '*' in self.value:
@@ -158,12 +157,15 @@ class SignatureLine(object):
                 except KeyboardInterrupt as e:
                     raise e
                 except Exception as e:
-                    raise ParserException("Failed to expand string '%s' with integer '%s' in line '%s'" % (self.value, n, line))
+                    raise ParserException(
+                        f"Failed to expand string '{self.value}' with integer '{n}' in line '{line}'"
+                    )
             try:
                 self.value = binwalk.core.compat.string_decode(self.value)
             except ValueError as e:
-                raise ParserException("Failed to decode string value '%s' in line '%s'" % (self.value, line))
-        # If a regex was specified, compile it
+                raise ParserException(
+                    f"Failed to decode string value '{self.value}' in line '{line}'"
+                )
         elif self.type == 'regex':
             self.regex = True
 
@@ -172,45 +174,43 @@ class SignatureLine(object):
             except KeyboardInterrupt as e:
                 raise e
             except Exception as e:
-                raise ParserException("Invalid regular expression '%s': %s" % (self.value, str(e)))
-        # Non-string types are integer values
+                raise ParserException(f"Invalid regular expression '{self.value}': {str(e)}")
         else:
             try:
                 self.value = int(self.value, 0)
             except ValueError as e:
-                raise ParserException("Failed to convert value '%s' to an integer on line '%s'" % (self.value, line))
+                raise ParserException(
+                    f"Failed to convert value '{self.value}' to an integer on line '{line}'"
+                )
 
         # Sanity check to make sure the first line of a signature has an explicit value
         if self.level == 0 and self.value is None:
-            raise ParserException("First element of a signature must specify a non-wildcard value: '%s'" % (line))
+            raise ParserException(
+                f"First element of a signature must specify a non-wildcard value: '{line}'"
+            )
 
         # Set the size and struct format value for the specified data type.
         # This must be done, obviously, after the value has been parsed out above.
-        if self.type == 'string':
-            # Strings don't have a struct format value, since they don't have to be unpacked
-            self.fmt = None
-
-            # If a string type has a specific value, set the comparison size to the length of that string
-            if self.value:
-                self.size = len(self.value)
-            # Else, truncate the string to self.MAX_STRING_SIZE
-            else:
-                self.size = self.MAX_STRING_SIZE
+        if self.type == 'byte':
+            self.fmt = 'b'
+            self.size = 1
+        elif self.type == 'quad':
+            self.fmt = 'q'
+            self.size = 8
         elif self.type == 'regex':
             # Regular expressions don't have a struct format value, since they don't have to be unpacked
             self.fmt = None
             # The size of a matching regex is unknown until it is applied to some data
             self.size = self.MAX_STRING_SIZE
-        elif self.type == 'byte':
-            self.fmt = 'b'
-            self.size = 1
         elif self.type == 'short':
             self.fmt = 'h'
             self.size = 2
-        elif self.type == 'quad':
-            self.fmt = 'q'
-            self.size = 8
-        # Assume 4 byte length for all other data types
+        elif self.type == 'string':
+            # Strings don't have a struct format value, since they don't have to be unpacked
+            self.fmt = None
+
+            # If a string type has a specific value, set the comparison size to the length of that string
+            self.size = len(self.value) if self.value else self.MAX_STRING_SIZE
         else:
             self.fmt = 'i'
             self.size = 4
@@ -223,11 +223,7 @@ class SignatureLine(object):
 
         # If a struct format was identified, create a format string to be passed to struct.unpack
         # which specifies the endianess and data type format.
-        if self.fmt:
-            self.pkfmt = '%c%c' % (self.endianess, self.fmt)
-        else:
-            self.pkfmt = None
-
+        self.pkfmt = '%c%c' % (self.endianess, self.fmt) if self.fmt else None
         # Check if a format string was specified (this is optional)
         if len(parts) == 4:
             # %lld formats are only supported if Python was built with HAVE_LONG_LONG
@@ -350,8 +346,10 @@ class Signature(object):
         # spit out a warning about any self-overlapping signatures.
         if not binwalk.core.compat.has_key(line.tags, 'overlap'):
             for i in range(1, line.size):
-                if restr[i:] == restr[0:(line.size-i)]:
-                    binwalk.core.common.warning("Signature '%s' is a self-overlapping signature!" % line.text)
+                if restr[i:] == restr[: line.size - i]:
+                    binwalk.core.common.warning(
+                        f"Signature '{line.text}' is a self-overlapping signature!"
+                    )
                     break
 
         return re.compile(re.escape(restr))
@@ -415,20 +413,17 @@ class Magic(object):
         Returns True if the string should be filtered out, i.e., not displayed.
         Returns False if the string should be displayed.
         '''
-        filtered = None
         # Text is converted to lower case first, partially for historical
         # purposes, but also because it simplifies writing filter rules
         # (e.g., don't have to worry about case sensitivity).
         text = text.lower()
 
-        for include in self.includes:
-            if include.search(text):
-                filtered = False
-                break
-
+        filtered = next(
+            (False for include in self.includes if include.search(text)), None
+        )
         # If exclusive include filters have been specified and did
         # not match the text, then the text should be filtered out.
-        if self.includes and filtered == None:
+        if self.includes and filtered is None:
             return True
 
         for exclude in self.excludes:
@@ -438,7 +433,7 @@ class Magic(object):
 
         # If no explicit exclude filters were matched, then the
         # text should *not* be filtered.
-        if filtered == None:
+        if filtered is None:
             filtered = False
 
         return filtered

@@ -109,13 +109,15 @@ class Plugins(object):
             except KeyboardInterrupt as e:
                 raise e
             except Exception as e:
-                binwalk.core.common.warning("%s.%s failed: %s" % (callback.__module__, callback.__name__, e))
+                binwalk.core.common.warning(
+                    f"{callback.__module__}.{callback.__name__} failed: {e}"
+                )
 
     def _find_plugin_class(self, plugin):
         for (name, klass) in inspect.getmembers(plugin, inspect.isclass):
             if issubclass(klass, Plugin) and klass != Plugin:
                 return klass
-        raise Exception("Failed to locate Plugin class in " + plugin)
+        raise Exception(f"Failed to locate Plugin class in {plugin}")
 
     def list_plugins(self):
         '''
@@ -154,13 +156,13 @@ class Plugins(object):
             }
         }
 
-        for key in plugins.keys():
-            if key == 'user':
-                plugins[key]['path'] = self.settings.user.plugins
-            else:
-                plugins[key]['path'] = self.settings.system.plugins
-
-            if plugins[key]['path']:
+        for key, value in plugins.items():
+            plugins[key]['path'] = (
+                self.settings.user.plugins
+                if key == 'user'
+                else self.settings.system.plugins
+            )
+            if value['path']:
                 for file_name in os.listdir(plugins[key]['path']):
                     if file_name.endswith(self.MODULE_EXTENSION):
                         module = file_name[:-len(self.MODULE_EXTENSION)]
@@ -174,7 +176,7 @@ class Plugins(object):
                         except KeyboardInterrupt as e:
                             raise e
                         except Exception as e:
-                            binwalk.core.common.warning("Error loading plugin '%s': %s" % (file_name, str(e)))
+                            binwalk.core.common.warning(f"Error loading plugin '{file_name}': {str(e)}")
                             plugins[key]['enabled'][module] = False
 
                         try:
@@ -238,7 +240,9 @@ class Plugins(object):
             except KeyboardInterrupt as e:
                 raise e
             except Exception as e:
-                binwalk.core.common.warning("Failed to load plugin module '%s': %s" % (module, str(e)))
+                binwalk.core.common.warning(
+                    f"Failed to load plugin module '{module}': {str(e)}"
+                )
 
     def pre_scan_callbacks(self, obj):
         return self._call_plugins(self.pre_scan)

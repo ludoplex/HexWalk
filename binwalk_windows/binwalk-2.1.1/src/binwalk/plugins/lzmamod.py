@@ -29,7 +29,7 @@ class LZMAModPlugin(binwalk.core.plugin.Plugin):
 
         # If the external extractor was successul (True) or didn't exist (None), don't do anything.
         if result not in [True, None]:
-            out_name = os.path.splitext(fname)[0] + '-patched' + os.path.splitext(fname)[1]
+            out_name = f'{os.path.splitext(fname)[0]}-patched{os.path.splitext(fname)[1]}'
             fp_out = BlockFile(out_name, 'w')
             # Use self.module.config.open_file here to ensure that other config settings (such as byte-swapping) are honored
             fp_in = self.module.config.open_file(fname, offset=0, length=0)
@@ -39,11 +39,7 @@ class LZMAModPlugin(binwalk.core.plugin.Plugin):
             while i < fp_in.length:
                 (data, dlen) = fp_in.read_block()
 
-                if i == 0:
-                    out_data = data[0:5] + self.FAKE_LZMA_SIZE + data[5:]
-                else:
-                    out_data = data
-
+                out_data = data[:5] + self.FAKE_LZMA_SIZE + data[5:] if i == 0 else data
                 fp_out.write(out_data)
 
                 i += dlen

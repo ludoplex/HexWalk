@@ -71,69 +71,55 @@ class IDBFileIO(io.FileIO):
     def read(self, n=-1):
         if not self.__idb__:
             return super(IDBFileIO, self).read(n)
-        else:
-            data = ''
-            read_count = 0
-            filler_count = 0
+        data = ''
+        read_count = 0
+        filler_count = 0
 
             # Loop to read n bytes of data across IDB segments, filling
             # segment gaps with NULL bytes.
-            while n and self.idb_pos <= self.idb_end:
-                segment = idaapi.getseg(self.idb_pos)
+        while n and self.idb_pos <= self.idb_end:
+            if segment := idaapi.getseg(self.idb_pos):
+                if filler_count:
+                    data += "\x00" * filler_count
+                    filler_count = 0
 
-                if not segment:
-                    filler_count += 1
-                    self.idb_pos += 1
-                    n -= 1
-                else:
-                    if filler_count:
-                        data += "\x00" * filler_count
-                        filler_count = 0
-                    
-                    if (self.idb_pos + n) > segment.endEA:
-                        read_count = segment.endEA - self.idb_pos
-                    else:
-                        read_count = n
+                read_count = (
+                    segment.endEA - self.idb_pos
+                    if (self.idb_pos + n) > segment.endEA
+                    else n
+                )
+                try:
+                    data += idc.GetManyBytes(self.idb_pos, read_count)
+                except TypeError as e:
+                    # This happens when trying to read from uninitialized segments (e.g., .bss)
+                    data += "\x00" * read_count
 
-                    try:
-                        data += idc.GetManyBytes(self.idb_pos, read_count)
-                    except TypeError as e:
-                        # This happens when trying to read from uninitialized segments (e.g., .bss)
-                        data += "\x00" * read_count
+                n -= read_count
+                self.idb_pos += read_count
 
-                    n -= read_count
-                    self.idb_pos += read_count
+            else:
+                filler_count += 1
+                self.idb_pos += 1
+                n -= 1
+        if filler_count:
+            data += "\x00" * filler_count
+            filler_count = 0
 
-            if filler_count:
-                data += "\x00" * filler_count
-                filler_count = 0
-
-            return data
+        return data
 
     def write(self, data):
-        if not self.__idb__:
-            return super(IDBFileIO, self).write(data)
-        else:
-            # Don't actually write anything to the IDB, as, IMHO,
-            # a binwalk plugin should never do this. But return the
-            # number of bytes we were requested to write so that 
-            # any callers are happy.
-            return len(data)
+        return super(IDBFileIO, self).write(data) if not self.__idb__ else len(data)
 
     def seek(self, n, whence=os.SEEK_SET):
         if not self.__idb__:
             return super(IDBFileIO, self).seek(n, whence)
-        else:
-            if whence == os.SEEK_SET:
-                self.idb_pos = self.idb_start + n
-            elif whence == os.SEEK_CUR:
-                self.idb_pos += n
-            elif whence == os.SEEK_END:
-                self.idb_pos = self.idb_end + n
+        if whence == os.SEEK_SET:
+            self.idb_pos = self.idb_start + n
+        elif whence == os.SEEK_CUR:
+            self.idb_pos += n
+        elif whence == os.SEEK_END:
+            self.idb_pos = self.idb_end + n
 
     def tell(self):
-        if not self.__idb__:
-            return super(IDBFileIO, self).tell()
-        else:
-            return self.idb_pos
+        return super(IDBFileIO, self).tell() if not self.__idb__ else self.idb_pos
 

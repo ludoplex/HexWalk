@@ -83,11 +83,7 @@ class Entropy(Module):
         self.max_description_length = 0
         self.file_markers = {}
 
-        if self.use_zlib:
-            self.algorithm = self.gzip
-        else:
-            self.algorithm = self.shannon
-
+        self.algorithm = self.gzip if self.use_zlib else self.shannon
         # Get a list of all other module's results to mark on the entropy graph
         for (module, obj) in iterator(self.modules):
             for result in obj.results:
@@ -107,10 +103,7 @@ class Entropy(Module):
             self.display_results = False
 
         if not self.block_size:
-            if self.config.block:
-                self.block_size = self.config.block
-            else:
-                self.block_size = None
+            self.block_size = self.config.block if self.config.block else None
 
     def _entropy_sigterm_handler(self, *args):
         print ("FUck it all.")
@@ -222,7 +215,7 @@ class Entropy(Module):
         if data:
             length = len(data)
 
-            seen = dict(((chr(x), 0) for x in range(0, 256)))
+            seen = {chr(x): 0 for x in range(0, 256)}
             for byte in data:
                 seen[byte] += 1
 
