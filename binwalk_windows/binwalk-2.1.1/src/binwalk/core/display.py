@@ -85,12 +85,9 @@ class Display(object):
         self.custom_verbose_args = args
 
     def header(self, *args, **kwargs):
-        file_name = None
         self.num_columns = len(args)
 
-        if has_key(kwargs, 'file_name'):
-            file_name = kwargs['file_name']
-
+        file_name = kwargs['file_name'] if has_key(kwargs, 'file_name') else None
         if self.verbose and file_name:
             md5sum = binwalk.core.common.file_md5(file_name)
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -140,7 +137,7 @@ class Display(object):
             except IOError as e:
                 pass
 
-        if self.fp and not (self.csv and not csv):
+        if self.fp and (not self.csv or csv):
             self.log(fmt, columns)
 
     def _append_to_data_parts(self, data, start, end):

@@ -19,7 +19,7 @@ class UBIValidPlugin(binwalk.core.plugin.Plugin):
         header_crc = struct.unpack(">I", ec_header[60:64])[0]
 
         # Calculate the actual CRC
-        calculated_header_crc = ~binascii.crc32(ec_header[0:60]) & 0xffffffff
+        calculated_header_crc = ~binascii.crc32(ec_header[:60]) & 0xffffffff
 
         # Make sure they match
         return header_crc == calculated_header_crc
@@ -45,11 +45,7 @@ class UBIValidPlugin(binwalk.core.plugin.Plugin):
             # First time plugin is called on file, save EC block offset
             self.last_ec_hdr_offset = result.offset
 
-        if self.peb_size:
-            # If PEB size has been determined jump PEB size
-            result.jump = self.peb_size
-        else:
-            result.jump = 0
+        result.jump = self.peb_size if self.peb_size else 0
 
     def scan(self, result):
         if result.file and result.description.lower().startswith('ubi erase count header'):
@@ -59,6 +55,6 @@ class UBIValidPlugin(binwalk.core.plugin.Plugin):
             ec_header = binwalk.core.compat.str2bytes(fd.read(1024))
             fd.close()
 
-            result.valid = self._check_crc(ec_header[0:64])
+            result.valid = self._check_crc(ec_header[:64])
             if result.valid:
                 self._process_result(result)

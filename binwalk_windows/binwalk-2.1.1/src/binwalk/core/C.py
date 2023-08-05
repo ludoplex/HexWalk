@@ -99,7 +99,7 @@ class Library(object):
         self.settings = binwalk.core.settings.Settings()
         self.library = ctypes.cdll.LoadLibrary(self.find_library(library))
         if not self.library:
-            raise Exception("Failed to load library '%s'" % library)
+            raise Exception(f"Failed to load library '{library}'")
 
         for function in functions:    
             f = FunctionHandler(self.library, function)
@@ -116,19 +116,34 @@ class Library(object):
         lib_path = None
 
         prefix = binwalk.core.common.get_libs_path()
-        
+
         if isinstance(libraries, str):
             libraries = [libraries]
 
         for library in libraries:
             system_paths = {
-                'linux'   : [os.path.join(prefix, 'lib%s.so' % library), '/usr/local/lib/lib%s.so' % library],
-                'cygwin'  : [os.path.join(prefix, 'lib%s.so' % library), '/usr/local/lib/lib%s.so' % library],
-                'win32'   : [os.path.join(prefix, 'lib%s.dll' % library), '%s.dll' % library],
-                'darwin'  : [os.path.join(prefix, 'lib%s.dylib' % library),
-                             '/opt/local/lib/lib%s.dylib' % library,
-                             '/usr/local/lib/lib%s.dylib' % library,
-                            ] + glob.glob('/usr/local/Cellar/*%s*/*/lib/lib%s.dylib' % (library, library)),
+                'linux': [
+                    os.path.join(prefix, f'lib{library}.so'),
+                    f'/usr/local/lib/lib{library}.so',
+                ],
+                'cygwin': [
+                    os.path.join(prefix, f'lib{library}.so'),
+                    f'/usr/local/lib/lib{library}.so',
+                ],
+                'win32': [
+                    os.path.join(prefix, f'lib{library}.dll'),
+                    f'{library}.dll',
+                ],
+                'darwin': (
+                    [
+                        os.path.join(prefix, f'lib{library}.dylib'),
+                        f'/opt/local/lib/lib{library}.dylib',
+                        f'/usr/local/lib/lib{library}.dylib',
+                    ]
+                    + glob.glob(
+                        f'/usr/local/Cellar/*{library}*/*/lib/lib{library}.dylib'
+                    )
+                ),
             }
 
             for i in range(2, 4):
@@ -138,7 +153,7 @@ class Library(object):
             # Search these *first*, since a) they are the most likely locations and b) there may be a
             # discrepency between where ctypes.util.find_library and ctypes.cdll.LoadLibrary search for libs.
             for path in system_paths[sys.platform]:
-                binwalk.core.common.debug("Searching for '%s'" % path)
+                binwalk.core.common.debug(f"Searching for '{path}'")
                 if os.path.exists(path):
                     lib_path = path
                     break
@@ -149,14 +164,14 @@ class Library(object):
 
             # Use the first library that we can find
             if lib_path:
-                binwalk.core.common.debug("Found library '%s' at: %s" % (library, lib_path))
+                binwalk.core.common.debug(f"Found library '{library}' at: {lib_path}")
                 break
             else:
-                binwalk.core.common.debug("Could not find library '%s'" % library)
+                binwalk.core.common.debug(f"Could not find library '{library}'")
 
         # If we still couldn't find the library, error out
         if not lib_path:
-            raise Exception("Failed to locate libraries '%s'" % str(libraries))
+            raise Exception(f"Failed to locate libraries '{str(libraries)}'")
 
         return lib_path
 

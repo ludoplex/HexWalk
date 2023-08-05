@@ -93,8 +93,13 @@ class Disasm(Module):
 
         self.disasm_data_size = self.min_insn_count * 10
 
-        for arch in self.ARCHITECTURES:
-            self.disassemblers.append((capstone.Cs(arch.type, (arch.mode + arch.endianess)), arch.description))
+        self.disassemblers.extend(
+            (
+                capstone.Cs(arch.type, (arch.mode + arch.endianess)),
+                arch.description,
+            )
+            for arch in self.ARCHITECTURES
+        )
 
     def scan_file(self, fp):
         total_read = 0
@@ -121,7 +126,7 @@ class Disasm(Module):
                     # to prevent false positives (e.g., "\x00\x00\x00\x00" is a nop in MIPS).
                     if len(set(code_block)) >= 2:
                         for (md, description) in self.disassemblers:
-                            insns = [insn for insn in md.disasm_lite(code_block, (total_read+block_offset))]
+                            insns = list(md.disasm_lite(code_block, (total_read+block_offset)))
                             binwalk.core.common.debug("0x%.8X   %s, at least %d valid instructions" % ((total_read+block_offset),
                                                                                                         description,
                                                                                                         len(insns)))
@@ -150,7 +155,7 @@ class Disasm(Module):
                     if r.valid and r.display:
                         if self.config.verbose:
                             for (position, size, mnem, opnds) in result.insns:
-                                self.result(offset=position, file=fp, description="%s %s" % (mnem, opnds))
+                                self.result(offset=position, file=fp, description=f"{mnem} {opnds}")
                         if not self.keep_going:
                             return
 

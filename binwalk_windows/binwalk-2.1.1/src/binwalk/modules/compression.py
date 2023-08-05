@@ -30,7 +30,11 @@ class LZMA(object):
 
         # Add an extraction rule
         if self.module.extractor.enabled:
-            self.module.extractor.add_rule(regex='^%s' % self.DESCRIPTION.lower(), extension="7z", cmd=self.extractor)
+            self.module.extractor.add_rule(
+                regex=f'^{self.DESCRIPTION.lower()}',
+                extension="7z",
+                cmd=self.extractor,
+            )
 
     def extractor(self, file_name):
         # Open and read the file containing the raw compressed data.
@@ -52,12 +56,10 @@ class LZMA(object):
 
     def build_property(self, pb, lp, lc):
         prop = (((pb * 5) + lp) * 9) + lc
-        if prop > self.MAX_PROP:
-            return None
-        return int(prop)
+        return None if prop > self.MAX_PROP else int(prop)
 
     def parse_property(self, prop):
-        prop = int(ord(prop))
+        prop = ord(prop)
 
         if prop > self.MAX_PROP:
             return None
@@ -96,8 +98,10 @@ class LZMA(object):
             # For partial scans, only use the largest dictionary value
             self.dictionaries.append(binwalk.core.compat.bytes2str(struct.pack("<I", 2**25)))
         else:
-            for n in range(16, 26):
-                self.dictionaries.append(binwalk.core.compat.bytes2str(struct.pack("<I", 2**n)))
+            self.dictionaries.extend(
+                binwalk.core.compat.bytes2str(struct.pack("<I", 2**n))
+                for n in range(16, 26)
+            )
 
     def build_headers(self):
         self.headers = set()
@@ -156,7 +160,11 @@ class Deflate(object):
 
         # Add an extraction rule
         if self.module.extractor.enabled:
-            self.module.extractor.add_rule(regex='^%s' % self.DESCRIPTION.lower(), extension="deflate", cmd=self.extractor)
+            self.module.extractor.add_rule(
+                regex=f'^{self.DESCRIPTION.lower()}',
+                extension="deflate",
+                cmd=self.extractor,
+            )
 
     def extractor(self, file_name):
         in_data = ""
@@ -251,8 +259,9 @@ class RawCompression(Module):
 
                 for i in range(0, dlen):
                     for decompressor in self.decompressors:
-                        description = decompressor.decompress(data[i:i+decompressor.BLOCK_SIZE])
-                        if description:
+                        if description := decompressor.decompress(
+                            data[i : i + decompressor.BLOCK_SIZE]
+                        ):
                             self.result(description=description, file=fp, offset=fp.tell()-dlen+i)
                             if self.stop_on_first_hit:
                                 file_done = True

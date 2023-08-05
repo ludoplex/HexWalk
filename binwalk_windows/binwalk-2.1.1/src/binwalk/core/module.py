@@ -58,16 +58,11 @@ class Option(object):
     def convert(self, value, default_value):
         if self.type and (self.type.__name__ == self.dtype):
             # Be sure to specify a base of 0 for int() so that the base is auto-detected
-            if self.type == int:
-                t = self.type(value, 0)
-            else:
-                t = self.type(value)
+            return self.type(value, 0) if self.type == int else self.type(value)
         elif default_value or default_value is False:
-            t = default_value
+            return default_value
         else:
-            t = value
-
-        return t
+            return value
 
 class Kwarg(object):
     '''
@@ -331,11 +326,7 @@ class Module(object):
         args = []
 
         if self.RESULT:
-            if type(self.RESULT) != type([]):
-                result = [self.RESULT]
-            else:
-                result = self.RESULT
-
+            result = [self.RESULT] if type(self.RESULT) != type([]) else self.RESULT
             for name in result:
                 value = getattr(r, name)
 
@@ -396,15 +387,13 @@ class Module(object):
 
             if not fp:
                 break
+            if self.config.file_name_filter(fp) == False:
+                fp.close()
+                fp = None
             else:
-                if self.config.file_name_filter(fp) == False:
-                    fp.close()
-                    fp = None
-                    continue
-                else:
-                    self.status.clear()
-                    self.status.total = fp.length
-                    break
+                self.status.clear()
+                self.status.total = fp.length
+                break
 
         if fp is not None:
             self.current_target_file_name = fp.path
@@ -466,8 +455,7 @@ class Module(object):
             self.results.append(r)
 
             if r.display:
-                display_args = self._build_display_args(r)
-                if display_args:
+                if display_args := self._build_display_args(r):
                     self.config.display.format_strings(self.HEADER_FORMAT, self.RESULT_FORMAT)
                     self.config.display.result(*display_args)
 
@@ -481,8 +469,6 @@ class Module(object):
 
         Returns None.
         '''
-        exception_header_width = 100
-
         e = Error(**kwargs)
         e.module = self.__class__.__name__
 
@@ -490,6 +476,8 @@ class Module(object):
 
         if e.exception:
             sys.stderr.write("\n" + e.module + " Exception: " + str(e.exception) + "\n")
+            exception_header_width = 100
+
             sys.stderr.write("-" * exception_header_width + "\n")
             traceback.print_exc(file=sys.stderr)
             sys.stderr.write("-" * exception_header_width + "\n\n")
@@ -539,7 +527,9 @@ class Module(object):
             self.config.verbose = self.config.display.verbose = True
 
         if not self.config.files:
-            binwalk.core.common.debug("No target files specified, module %s terminated" % self.name)
+            binwalk.core.common.debug(
+                f"No target files specified, module {self.name} terminated"
+            )
             return False
 
         self.reset_dependencies()
@@ -651,11 +641,10 @@ class Modules(object):
         # If the argument already starts with a hyphen, don't add hyphens in front of it
         if opt.startswith('-'):
             return opt
-        # Short options are only 1 character
         elif len(opt) == 1:
-            return '-' + opt
+            return f'-{opt}'
         else:
-            return '--' + opt
+            return f'--{opt}'
 
     def list(self, attribute="run"):
         '''
@@ -666,12 +655,11 @@ class Modules(object):
         Returns a list of modules that contain the specified attribute, in the order they should be executed.
         '''
         import binwalk.modules
-        modules = {}
-
-        for (name, module) in inspect.getmembers(binwalk.modules):
-            if inspect.isclass(module) and hasattr(module, attribute):
-                modules[module] = module.PRIORITY
-
+        modules = {
+            module: module.PRIORITY
+            for name, module in inspect.getmembers(binwalk.modules)
+            if inspect.isclass(module) and hasattr(module, attribute)
+        }
         return sorted(modules, key=modules.get, reverse=True)
 
     def help(self):
@@ -680,33 +668,23 @@ class Modules(object):
 
         Returns the help string.
         '''
-        modules = {}
         help_string = "\nBinwalk v%s\nCraig Heffner, http://www.binwalk.org\n" % binwalk.core.settings.Settings.VERSION
         help_string += "\nUsage: binwalk [OPTIONS] [FILE1] [FILE2] [FILE3] ...\n"
 
-        # Build a dictionary of modules and their ORDER attributes.
-        # This makes it easy to sort modules by their ORDER attribute for display.
-        for module in self.list(attribute="CLI"):
-            if module.CLI:
-                modules[module] = module.ORDER
-
+        modules = {
+            module: module.ORDER
+            for module in self.list(attribute="CLI")
+            if module.CLI
+        }
         for module in sorted(modules, key=modules.get, reverse=True):
             help_string += "\n%s Options:\n" % module.TITLE
 
             for module_option in module.CLI:
                 if module_option.long and not module_option.hidden:
-                    long_opt = '--' + module_option.long
+                    long_opt = f'--{module_option.long}'
 
-                    if module_option.dtype:
-                        optargs = "=<%s>" % module_option.dtype
-                    else:
-                        optargs = ""
-
-                    if module_option.short:
-                        short_opt = "-" + module_option.short + ","
-                    else:
-                        short_opt = "   "
-
+                    optargs = f"=<{module_option.dtype}>" if module_option.dtype else ""
+                    short_opt = f"-{module_option.short}," if module_option.short else "   "
                     fmt = "    %%s %%s%%-%ds%%s\n" % (25-len(long_opt))
                     help_string += fmt % (short_opt, long_opt, optargs, module_option.description)
 
@@ -718,7 +696,6 @@ class Modules(object):
 
         Returns a list of executed module objects.
         '''
-        run_modules = []
         orig_arguments = self.arguments
 
         if args or kwargs:
@@ -728,12 +705,11 @@ class Modules(object):
         for module in self.list():
             obj = self.run(module)
 
-        # Add all loaded modules that marked themselves as enabled to the run_modules list
-        for (module, obj) in iterator(self.executed_modules):
-            # Report the results if the module is enabled and if it is a primary module or if it reported any results/errors
-            if obj.enabled and (obj.PRIMARY or obj.results or obj.errors):
-                run_modules.append(obj)
-
+        run_modules = [
+            obj
+            for module, obj in iterator(self.executed_modules)
+            if obj.enabled and (obj.PRIMARY or obj.results or obj.errors)
+        ]
         self.arguments = orig_arguments
 
         return run_modules
@@ -801,7 +777,7 @@ class Modules(object):
 
             # If a dependency failed, consider this a non-recoverable error and raise an exception
             if depobj.errors:
-                raise ModuleException("Failed to load " + dependency.name + " module")
+                raise ModuleException(f"Failed to load {dependency.name} module")
             else:
                 attributes[dependency.attribute] = depobj
 
@@ -834,16 +810,13 @@ class Modules(object):
             for module_option in m.CLI:
 
                 parser_args = []
-                parser_kwargs = {}
-
                 if not module_option.long:
                     continue
 
                 if module_option.short:
-                    parser_args.append('-' + module_option.short)
-                parser_args.append('--' + module_option.long)
-                parser_kwargs['dest'] = module_option.long
-
+                    parser_args.append(f'-{module_option.short}')
+                parser_args.append(f'--{module_option.long}')
+                parser_kwargs = {'dest': module_option.long}
                 if module_option.type is None:
                     parser_kwargs['action'] = 'store_true'
                 elif module_option.type is list:
@@ -861,10 +834,7 @@ class Modules(object):
             if module_option.type == binwalk.core.common.BlockFile:
 
                 for k in get_keys(module_option.kwargs):
-                    kwargs[k] = []
-                    for unk in unknown:
-                        kwargs[k].append(unk)
-
+                    kwargs[k] = list(unknown)
             elif has_key(args, module_option.long) and args[module_option.long] not in [None, False]:
 
                 # Loop through all the kwargs for this command line option
@@ -882,9 +852,9 @@ class Modules(object):
                         except KeyboardInterrupt as e:
                             raise e
                         except Exception as e:
-                            raise ModuleException("Invalid usage: %s" % str(e))
+                            raise ModuleException(f"Invalid usage: {str(e)}")
 
-        binwalk.core.common.debug("%s :: %s => %s" % (module.TITLE, str(argv), str(kwargs)))
+        binwalk.core.common.debug(f"{module.TITLE} :: {str(argv)} => {kwargs}")
         return kwargs
 
     def kwargs(self, obj, kwargs):
@@ -896,20 +866,21 @@ class Modules(object):
 
         Returns None.
         '''
-        if hasattr(obj, "KWARGS"):
-            for module_argument in obj.KWARGS:
-                if has_key(kwargs, module_argument.name):
-                    arg_value = kwargs[module_argument.name]
-                else:
-                    arg_value = module_argument.default
+        if not hasattr(obj, "KWARGS"):
+            raise Exception(
+                f"binwalk.core.module.Modules.process_kwargs: {str(obj)} has no attribute 'KWARGS'"
+            )
+        for module_argument in obj.KWARGS:
+            if has_key(kwargs, module_argument.name):
+                arg_value = kwargs[module_argument.name]
+            else:
+                arg_value = module_argument.default
 
-                setattr(obj, module_argument.name, arg_value)
+            setattr(obj, module_argument.name, arg_value)
 
-            for (k, v) in iterator(kwargs):
-                if not hasattr(obj, k):
-                    setattr(obj, k, v)
-        else:
-            raise Exception("binwalk.core.module.Modules.process_kwargs: %s has no attribute 'KWARGS'" % str(obj))
+        for (k, v) in iterator(kwargs):
+            if not hasattr(obj, k):
+                setattr(obj, k, v)
 
     def status_server(self, port):
         '''

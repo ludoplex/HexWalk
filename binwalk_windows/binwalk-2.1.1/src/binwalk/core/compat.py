@@ -13,28 +13,19 @@ def iterator(dictionary):
     '''
     For cross compatibility between Python 2 and Python 3 dictionaries.
     '''
-    if PY_MAJOR_VERSION > 2:
-        return dictionary.items()
-    else:
-        return dictionary.iteritems()
+    return dictionary.items() if PY_MAJOR_VERSION > 2 else dictionary.iteritems()
 
 def has_key(dictionary, key):
     '''
     For cross compatibility between Python 2 and Python 3 dictionaries.
     '''
-    if PY_MAJOR_VERSION > 2:
-        return key in dictionary
-    else:
-        return dictionary.has_key(key)
+    return key in dictionary if PY_MAJOR_VERSION > 2 else dictionary.has_key(key)
 
 def get_keys(dictionary):
     '''
     For cross compatibility between Python 2 and Python 3 dictionaries.
     '''
-    if PY_MAJOR_VERSION > 2:
-        return list(dictionary.keys())
-    else:
-        return dictionary.keys()
+    return list(dictionary.keys()) if PY_MAJOR_VERSION > 2 else dictionary.keys()
 
 def str2bytes(string):
     '''
@@ -67,8 +58,5 @@ def user_input(prompt=''):
     '''
     For getting raw user input in Python 2 and 3.
     '''
-    if PY_MAJOR_VERSION > 2:
-        return input(prompt)
-    else:
-        return raw_input(prompt)
+    return input(prompt) if PY_MAJOR_VERSION > 2 else raw_input(prompt)
 

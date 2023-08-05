@@ -85,15 +85,16 @@ class Signature(Module):
 
         # Create a signature from the raw bytes, if any
         if self.raw_bytes:
-            raw_signatures = []
-            for raw_bytes in self.raw_bytes:
-                raw_signatures.append("0    string    %s    %s" % (raw_bytes, raw_bytes))
-            binwalk.core.common.debug("Parsing raw signatures: %s" % str(raw_signatures))
+            raw_signatures = [
+                f"0    string    {raw_bytes}    {raw_bytes}"
+                for raw_bytes in self.raw_bytes
+            ]
+            binwalk.core.common.debug(f"Parsing raw signatures: {raw_signatures}")
             self.magic.parse(raw_signatures)
 
         # Parse the magic file(s)
         if self.magic_files:
-            binwalk.core.common.debug("Loading magic files: %s" % str(self.magic_files))
+            binwalk.core.common.debug(f"Loading magic files: {str(self.magic_files)}")
             for f in self.magic_files:
                 self.magic.load(f)
 

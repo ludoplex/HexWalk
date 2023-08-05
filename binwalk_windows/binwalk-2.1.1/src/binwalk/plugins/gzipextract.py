@@ -25,18 +25,16 @@ class GzipExtractPlugin(binwalk.core.plugin.Plugin):
         outfile = os.path.splitext(fname)[0]
 
         try:
-            fpout = open(outfile, "wb")
-            gz = gzip.GzipFile(fname, "rb")
+            with open(outfile, "wb") as fpout:
+                gz = gzip.GzipFile(fname, "rb")
 
-            while True:
-                data = gz.read(self.BLOCK_SIZE)
-                if data:
-                    fpout.write(data)
-                else:
-                    break
+                while True:
+                    if data := gz.read(self.BLOCK_SIZE):
+                        fpout.write(data)
+                    else:
+                        break
 
-            gz.close()
-            fpout.close()
+                gz.close()
         except KeyboardInterrupt as e:
             raise e
         except Exception as e:

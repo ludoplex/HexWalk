@@ -175,10 +175,10 @@ class General(Module):
         '''
         if self.file_name_include_regex and not self.file_name_include_regex.search(fp.name):
             return False
-        if self.file_name_exclude_regex and self.file_name_exclude_regex.search(fp.name):
-            return False
-
-        return True
+        return (
+            not self.file_name_exclude_regex
+            or not self.file_name_exclude_regex.search(fp.name)
+        )
 
     def open_file(self, fname, length=None, offset=None, swap=None, block=None, peek=None):
         '''
@@ -207,7 +207,7 @@ class General(Module):
         # Validate the target files listed in target_files
         for tfile in self.files:
             # Ignore directories.
-            if not self.subclass == io.FileIO or not os.path.isdir(tfile):
+            if self.subclass != io.FileIO or not os.path.isdir(tfile):
                 # Make sure we can open the target files
                 try:
                     fp = self.open_file(tfile)
@@ -216,5 +216,5 @@ class General(Module):
                 except KeyboardInterrupt as e:
                     raise e
                 except Exception as e:
-                    self.error(description="Cannot open file : %s" % str(e))
+                    self.error(description=f"Cannot open file : {str(e)}")
 

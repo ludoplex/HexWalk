@@ -49,11 +49,7 @@ def find_binwalk_module_paths():
     return paths
 
 def remove_binwalk_module(pydir=None, pybin=None):
-    if pydir:
-        module_paths = [pydir]
-    else:
-        module_paths = find_binwalk_module_paths()
-
+    module_paths = [pydir] if pydir else find_binwalk_module_paths()
     for path in module_paths:
         try:
             remove_tree(path)
@@ -67,9 +63,7 @@ def remove_binwalk_module(pydir=None, pybin=None):
         try:
             sys.stdout.write("removing '%s'\n" % pybin)
             os.remove(pybin)
-        except KeyboardInterrupt as e:
-            pass
-        except Exception as e:
+        except (KeyboardInterrupt, Exception) as e:
             pass
 
 class IDAUnInstallCommand(Command):
@@ -195,22 +189,26 @@ class CleanCommand(Command):
             pass
 
 # The data files to install along with the module
-install_data_files = []
-for data_dir in ["magic", "config", "plugins", "modules", "core"]:
-        install_data_files.append("%s%s*" % (data_dir, os.path.sep))
-
+install_data_files = [
+    f"{data_dir}{os.path.sep}*"
+    for data_dir in ["magic", "config", "plugins", "modules", "core"]
+]
 # Install the module, script, and support files
-setup(name = MODULE_NAME,
-      version = "2.1.1",
-      description = "Firmware analysis tool",
-      author = "Craig Heffner",
-      url = "https://github.com/devttys0/%s" % MODULE_NAME,
-
-      requires = [],
-      packages = [MODULE_NAME],
-      package_data = {MODULE_NAME : install_data_files},
-      scripts = [os.path.join("scripts", SCRIPT_NAME)],
-
-      cmdclass = {'clean' : CleanCommand, 'uninstall' : UninstallCommand, 'idainstall' : IDAInstallCommand, 'idauninstall' : IDAUnInstallCommand}
+setup(
+    name=MODULE_NAME,
+    version="2.1.1",
+    description="Firmware analysis tool",
+    author="Craig Heffner",
+    url=f"https://github.com/devttys0/{MODULE_NAME}",
+    requires=[],
+    packages=[MODULE_NAME],
+    package_data={MODULE_NAME: install_data_files},
+    scripts=[os.path.join("scripts", SCRIPT_NAME)],
+    cmdclass={
+        'clean': CleanCommand,
+        'uninstall': UninstallCommand,
+        'idainstall': IDAInstallCommand,
+        'idauninstall': IDAUnInstallCommand,
+    },
 )
 

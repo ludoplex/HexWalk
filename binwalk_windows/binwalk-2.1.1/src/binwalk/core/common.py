@@ -12,10 +12,7 @@ from binwalk.core.compat import *
 
 # The __debug__ value is a bit backwards; by default it is set to True, but
 # then set to False if the Python interpreter is run with the -O option.
-if not __debug__:
-    DEBUG = True
-else:
-    DEBUG = False
+DEBUG = not __debug__
 
 def MSWindows():
     # Returns True if running in a Microsoft Windows OS
@@ -26,7 +23,7 @@ def debug(msg):
     Displays debug messages to stderr only if the Python interpreter was invoked with the -O flag.
     '''
     if DEBUG:
-        sys.stderr.write("DEBUG: " + msg + "\n")
+        sys.stderr.write(f"DEBUG: {msg}" + "\n")
         sys.stderr.flush()
 
 def warning(msg):
@@ -81,7 +78,9 @@ def file_size(filename):
     except KeyboardInterrupt as e:
         raise e
     except Exception as e:
-        raise Exception("file_size failed to obtain the size of '%s': %s" % (filename, str(e)))
+        raise Exception(
+            f"file_size failed to obtain the size of '{filename}': {str(e)}"
+        )
     finally:
         os.close(fd)
 
@@ -133,7 +132,7 @@ def unique_file_name(base_name, extension=''):
     idcount = 0
 
     if extension and not extension.startswith('.'):
-        extension = '.%s' % extension
+        extension = f'.{extension}'
 
     fname = base_name + extension
 
@@ -231,11 +230,11 @@ class StringFile(object):
         self.args.size = len(self.string)
 
     def read(self, n=-1):
-        if n == -1:
-            data = self.string[self.total_read:]
-        else:
-            data = self.string[self.total_read:self.total_read+n]
-        return data
+        return (
+            self.string[self.total_read :]
+            if n == -1
+            else self.string[self.total_read : self.total_read + n]
+        )
 
     def tell(self):
         return self.total_read
@@ -252,6 +251,9 @@ class StringFile(object):
 def BlockFile(fname, mode='r', subclass=io.FileIO, **kwargs):
 
     # Defining a class inside a function allows it to be dynamically subclassed
+
+
+
     class InternalBlockFile(subclass):
         '''
         Abstraction class for accessing binary files.
@@ -431,7 +433,6 @@ def BlockFile(fname, mode='r', subclass=io.FileIO, **kwargs):
 
             Returns a str object containing the read data.
             '''
-            l = 0
             data = b''
 
             if self.total_read < self.length:
@@ -439,14 +440,13 @@ def BlockFile(fname, mode='r', subclass=io.FileIO, **kwargs):
                 if (self.total_read + n) > self.length:
                     n = self.length - self.total_read
 
+                l = 0
                 while n < 0 or l < n:
-                    tmp = super(self.__class__, self).read(n-l)
-                    if tmp:
-                        data += tmp
-                        l += len(tmp)
-                    else:
+                    if not (tmp := super(self.__class__, self).read(n - l)):
                         break
 
+                    data += tmp
+                    l += len(tmp)
                 self.total_read += len(data)
 
             return self._swap_data_block(bytes2str(data))
@@ -481,6 +481,7 @@ def BlockFile(fname, mode='r', subclass=io.FileIO, **kwargs):
             data += self.peek(self.block_peek_size)
 
             return (data, dlen)
+
 
     return InternalBlockFile(fname, mode=mode, **kwargs)
 
